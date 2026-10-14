@@ -50,7 +50,7 @@ export const DashboardPage = () => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const { selectedDate, onOpenAddTask, onEditTask, onPostponeTask, refreshGlobalStats, onDateChange } = useOutletContext();
+  const { selectedDate, onOpenAddTask, onEditTask, onPostponeTask, refreshGlobalStats, onDateChange, taskUpdateTrigger } = useOutletContext();
 
   const [loading, setLoading] = useState(true);
   const [dailyStats, setDailyStats] = useState(null);
@@ -59,9 +59,9 @@ export const DashboardPage = () => {
   const [goals, setGoals] = useState([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [dailyRes, weeklyRes, occurrencesRes, goalsRes, tasksRes] = await Promise.all([
         api.get(`/analytics/daily?date=${selectedDate}`),
         api.get(`/analytics/weekly?date=${selectedDate}`),
@@ -85,12 +85,21 @@ export const DashboardPage = () => {
         type: 'error',
       });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadDashboardData();
+  }, [selectedDate, taskUpdateTrigger]);
+
+  // Real-time synchronization whenever tasks are added, completed or edited
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      loadDashboardData(true);
+    };
+    window.addEventListener('task-updated', handleTaskUpdated);
+    return () => window.removeEventListener('task-updated', handleTaskUpdated);
   }, [selectedDate]);
 
   const handleToggleComplete = async (task, occurrence) => {

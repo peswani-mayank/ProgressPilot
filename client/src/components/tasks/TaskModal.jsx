@@ -186,6 +186,7 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
       } else {
         await api.post('/tasks', payload);
       }
+      window.dispatchEvent(new CustomEvent('task-updated'));
       if (onSaved) onSaved();
       onClose();
     } catch (err) {

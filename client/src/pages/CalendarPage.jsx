@@ -34,7 +34,7 @@ const PRIORITY_COLOR_MAP = {
 };
 
 export const CalendarPage = () => {
-  const { onOpenAddTask, onEditTask } = useOutletContext();
+  const { onOpenAddTask, onEditTask, taskUpdateTrigger } = useOutletContext();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'day'
   const [occurrences, setOccurrences] = useState([]);
@@ -66,20 +66,28 @@ export const CalendarPage = () => {
   const startDateStr = format(rangeStart, 'yyyy-MM-dd');
   const endDateStr = format(rangeEnd, 'yyyy-MM-dd');
 
-  const fetchCalendarOccurrences = async () => {
+  const fetchCalendarOccurrences = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await api.get(`/occurrences?startDate=${startDateStr}&endDate=${endDateStr}`);
       setOccurrences(data || []);
     } catch (err) {
       console.error('Failed to fetch calendar occurrences:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchCalendarOccurrences();
+  }, [startDateStr, endDateStr, taskUpdateTrigger]);
+
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      fetchCalendarOccurrences(true);
+    };
+    window.addEventListener('task-updated', handleTaskUpdated);
+    return () => window.removeEventListener('task-updated', handleTaskUpdated);
   }, [startDateStr, endDateStr]);
 
   const handlePrev = () => {

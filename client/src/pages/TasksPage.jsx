@@ -11,7 +11,7 @@ import api from '../services/api';
 import { format } from 'date-fns';
 
 export const TasksPage = () => {
-  const { onOpenAddTask, onEditTask, onPostponeTask, refreshGlobalStats } = useOutletContext();
+  const { onOpenAddTask, onEditTask, onPostponeTask, refreshGlobalStats, taskUpdateTrigger } = useOutletContext();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -48,9 +48,9 @@ export const TasksPage = () => {
       .catch(() => {});
   }, []);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (category) params.append('category', category);
@@ -67,12 +67,21 @@ export const TasksPage = () => {
     } catch (err) {
       addToast({ title: 'Error loading tasks', message: err.message, type: 'error' });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTasks();
+  }, [search, category, priority, status, scheduleType, sortBy, page, taskUpdateTrigger]);
+
+  // Real-time synchronization whenever tasks are added, edited, or modified
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      fetchTasks(true);
+    };
+    window.addEventListener('task-updated', handleTaskUpdated);
+    return () => window.removeEventListener('task-updated', handleTaskUpdated);
   }, [search, category, priority, status, scheduleType, sortBy, page]);
 
   // Tab Filtering client-side on top of fetched items

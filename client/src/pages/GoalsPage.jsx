@@ -56,20 +56,28 @@ export const GoalsPage = () => {
   const [milestones, setMilestones] = useState([]);
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
 
-  const fetchGoals = async () => {
+  const fetchGoals = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await api.get('/goals');
       setGoals(data || []);
     } catch (err) {
       addToast({ title: 'Error loading goals', message: err.message, type: 'error' });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchGoals();
+  }, []);
+
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      fetchGoals(true);
+    };
+    window.addEventListener('task-updated', handleTaskUpdated);
+    return () => window.removeEventListener('task-updated', handleTaskUpdated);
   }, []);
 
   const openCreateModal = () => {

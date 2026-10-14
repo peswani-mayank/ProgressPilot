@@ -21,10 +21,17 @@ export const AppLayout = () => {
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [taskUpdateTrigger, setTaskUpdateTrigger] = useState(0);
 
   // Sync date changes via search query parameter
   const handleDateChange = (newDate) => {
     setSearchParams({ date: newDate });
+  };
+
+  const handleTaskSaved = () => {
+    fetchGlobalStats();
+    setTaskUpdateTrigger((prev) => prev + 1);
+    window.dispatchEvent(new CustomEvent('task-updated'));
   };
 
   const fetchGlobalStats = () => {
@@ -93,6 +100,8 @@ export const AppLayout = () => {
                 setPostponeData({ task, occurrence });
               },
               refreshGlobalStats: fetchGlobalStats,
+              taskUpdateTrigger,
+              refreshTasks: handleTaskSaved,
             }}
           />
         </main>
@@ -107,7 +116,7 @@ export const AppLayout = () => {
         }}
         task={editingTask}
         initialDate={selectedDate}
-        onSaved={fetchGlobalStats}
+        onSaved={handleTaskSaved}
       />
 
       <PostponeModal
@@ -115,7 +124,7 @@ export const AppLayout = () => {
         onClose={() => setPostponeData(null)}
         task={postponeData?.task}
         occurrence={postponeData?.occurrence}
-        onPostponed={fetchGlobalStats}
+        onPostponed={handleTaskSaved}
       />
 
       <OnboardingModal

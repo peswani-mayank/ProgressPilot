@@ -47,7 +47,7 @@ export const PostponeModal = ({ isOpen, onClose, task, occurrence, onPostponed }
           notes,
         });
       }
-
+      window.dispatchEvent(new CustomEvent('task-updated'));
       if (onPostponed) onPostponed();
       onClose();
     } catch (err) {
