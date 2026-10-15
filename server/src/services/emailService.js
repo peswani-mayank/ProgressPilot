@@ -208,49 +208,7 @@ export const sendAccountabilityEmail = async ({
     };
   }
 
-  // 2. Check for Gmail / Custom SMTP credentials (easiest for personal email)
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-
-  if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: process.env.SMTP_SERVICE || 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"ProgressPilot" <${smtpUser}>`,
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      return {
-        success: true,
-        messageId: info.messageId,
-        status: 'delivered',
-        provider: 'smtp',
-      };
-    } catch (err) {
-      console.error('[SMTP Error]:', err.message);
-      if (retryCount === 0) {
-        await new Promise((r) => setTimeout(r, 1000));
-        return sendAccountabilityEmail({ to, subject, html, text, retryCount: 1 });
-      }
-      return {
-        success: false,
-        error: `SMTP error: ${err.message}`,
-        status: 'failed',
-      };
-    }
-  }
-
-  // 3. Check for Resend API Key
+  // 2. Check for Resend API Key (HTTP REST API - 100% cloud firewall proof, recommended for Render)
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
@@ -292,14 +250,46 @@ export const sendAccountabilityEmail = async ({
         provider: 'resend',
       };
     } catch (err) {
-      if (retryCount === 0) {
-        await new Promise((r) => setTimeout(r, 1000));
-        return sendAccountabilityEmail({ to, subject, html, text, retryCount: 1 });
-      }
+      console.error('[Resend Error]:', err.message);
+    }
+  }
+
+  // 3. Fallback to SMTP / Gmail with short 5s connection timeout (so it never hangs)
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: process.env.SMTP_SERVICE || 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
+      });
+
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_FROM || `"ProgressPilot" <${smtpUser}>`,
+        to,
+        subject,
+        html,
+        text,
+      });
 
       return {
+        success: true,
+        messageId: info.messageId,
+        status: 'delivered',
+        provider: 'smtp',
+      };
+    } catch (err) {
+      console.error('[SMTP Error]:', err.message);
+      return {
         success: false,
-        error: err.message,
+        error: `Email delivery issue: ${err.message}. (Note: Render free tier blocks outbound SMTP ports 465/587. For cloud delivery, add RESEND_API_KEY in Render environment).`,
         status: 'failed',
       };
     }
