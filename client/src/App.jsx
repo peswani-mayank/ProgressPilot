@@ -17,6 +17,7 @@ import JournalPage from './pages/JournalPage';
 import NotificationsPage from './pages/NotificationsPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import SEOUpdater from './components/common/SEOUpdater';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -50,6 +51,7 @@ export const App = () => {
         <ToastProvider>
           <TimerProvider>
             <BrowserRouter>
+              <SEOUpdater />
               <Routes>
                 {/* Public login route */}
                 <Route path="/login" element={<LoginPage />} />

@@ -2,14 +2,76 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="ProgressPilot — Plan Better. Focus Deeper. Progress Every Day. Complete personal productivity tracker with daily & weekly planning, Pomodoro focus timer, goals, calendar, daily reviews, and real-time analytics." />
     <title>ProgressPilot — Personal Productivity & Progress Tracker</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="ProgressPilot — Plan Better. Focus Deeper. Progress Every Day. Complete personal productivity tracker with daily & weekly task planning, Pomodoro focus timer, long-term goals, calendar, daily reviews, and real-time analytics." />
+    <meta name="keywords" content="productivity tracker, task manager, pomodoro timer, daily planner, habits tracker, goal setting, self improvement, study schedule, progress pilot" />
+    <meta name="author" content="Mayank Peswani" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://progresspilots.netlify.app/" />
+
+    <!-- Favicon & PWA App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="application-name" content="ProgressPilot" />
+    <meta name="apple-mobile-web-app-title" content="ProgressPilot" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Open Graph (Facebook, WhatsApp, LinkedIn, Slack) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ProgressPilot" />
+    <meta property="og:url" content="https://progresspilots.netlify.app/" />
+    <meta property="og:title" content="ProgressPilot — Personal Productivity & Progress Tracker" />
+    <meta property="og:description" content="Plan Better. Focus Deeper. Progress Every Day. Smart daily & weekly planner, Pomodoro timer, goals, and real-time self-improvement analytics." />
+    <meta property="og:image" content="https://progresspilots.netlify.app/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ProgressPilot" />
+    <meta name="twitter:creator" content="@ProgressPilot" />
+    <meta name="twitter:title" content="ProgressPilot — Personal Productivity & Progress Tracker" />
+    <meta name="twitter:description" content="Plan Better. Focus Deeper. Progress Every Day. Smart tasks, Pomodoro timer, recurring schedules, and real-time productivity analytics." />
+    <meta name="twitter:image" content="https://progresspilots.netlify.app/og-image.svg" />
+
+    <!-- JSON-LD Structured Data (Schema.org) for Google Search Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ProgressPilot",
+      "url": "https://progresspilots.netlify.app/",
+      "description": "Comprehensive personal productivity and self-improvement tracking web application featuring task planning, Pomodoro focus sessions, milestone goals, and transparent analytics.",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "All modern web browsers (Chrome, Safari, Firefox, Edge, Mobile)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Daily & Weekly Task Planning with Recurrence",
+        "Custom Pomodoro Focus Timer with Offline Sync",
+        "Long-term Goals & Milestone Stepper",
+        "Visual Day, Week, and Month Productivity Calendar",
+        "Day-over-Day Self-Improvement Analytics",
+        "Smart Email Reminders and Daily Agendas",
+        "End-of-day Structured Reflection Journal"
+      ]
+    }
+    </script>
+
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
     <div id="root"></div>

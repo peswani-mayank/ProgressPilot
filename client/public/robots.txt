@@ -1,0 +1,8 @@
+# Robots.txt for ProgressPilot
+# https://progresspilots.netlify.app
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://progresspilots.netlify.app/sitemap.xml
