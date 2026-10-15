@@ -37,6 +37,18 @@ const DAYS_OF_WEEK = [
   { label: 'Sat', value: 6 },
 ];
 
+const DURATION_PRESETS = [
+  { label: '15m', shortLabel: '15m', minutes: 15 },
+  { label: '25m (Pomo)', shortLabel: '25m', minutes: 25 },
+  { label: '30m', shortLabel: '30m', minutes: 30 },
+  { label: '45m', shortLabel: '45m', minutes: 45 },
+  { label: '1h', shortLabel: '1h', minutes: 60 },
+  { label: '1.5h', shortLabel: '1.5h', minutes: 90 },
+  { label: '2h', shortLabel: '2h', minutes: 120 },
+  { label: '3h', shortLabel: '3h', minutes: 180 },
+  { label: '4h', shortLabel: '4h', minutes: 240 },
+];
+
 export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, onSaved }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,6 +60,13 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
   const [dueDate, setDueDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
   const [estimatedDuration, setEstimatedDuration] = useState(30);
+
+  const currentPresetIndex = DURATION_PRESETS.findIndex((p) => p.minutes === estimatedDuration);
+  const sliderIndex = currentPresetIndex !== -1
+    ? currentPresetIndex
+    : DURATION_PRESETS.reduce((prev, curr, i) =>
+        Math.abs(curr.minutes - estimatedDuration) < Math.abs(DURATION_PRESETS[prev].minutes - estimatedDuration) ? i : prev
+      , 0);
   const [subtasks, setSubtasks] = useState([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [goalId, setGoalId] = useState('');
@@ -364,33 +383,64 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
         </div>
 
         {/* Estimated Duration */}
-        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 space-y-3">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-indigo-500" />
               Planned Focus Time
             </span>
-            <span className="font-extrabold text-indigo-600 dark:text-indigo-400 font-mono text-sm">
+            <span className="font-extrabold text-indigo-600 dark:text-indigo-400 font-mono text-sm bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-200/50 dark:border-indigo-800/50">
               {estimatedDuration} minutes ({(estimatedDuration / 60).toFixed(1)} hrs)
             </span>
           </div>
-          <input
-            type="range"
-            min="10"
-            max="240"
-            step="5"
-            value={estimatedDuration}
-            onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-            className="w-full accent-indigo-600 cursor-pointer"
-          />
-          <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-            <span>15m</span>
-            <span>30m</span>
-            <span>45m</span>
-            <span>1h</span>
-            <span>1.5h</span>
-            <span>2h</span>
-            <span>3h</span>
-            <span>4h</span>
+
+          {/* Quick Clickable Presets */}
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {DURATION_PRESETS.map((p) => {
+              const active = estimatedDuration === p.minutes;
+              return (
+                <button
+                  key={p.minutes}
+                  type="button"
+                  onClick={() => setEstimatedDuration(p.minutes)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all ${
+                    active
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-400'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Stepped Slider perfectly 1:1 aligned with the labels below */}
+          <div className="space-y-1 pt-1">
+            <input
+              type="range"
+              min="0"
+              max={DURATION_PRESETS.length - 1}
+              step="1"
+              value={sliderIndex}
+              onChange={(e) => setEstimatedDuration(DURATION_PRESETS[Number(e.target.value)].minutes)}
+              className="w-full accent-indigo-600 cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 font-medium px-0.5 select-none">
+              {DURATION_PRESETS.map((p) => (
+                <span
+                  key={p.minutes}
+                  onClick={() => setEstimatedDuration(p.minutes)}
+                  className={`cursor-pointer transition-colors ${
+                    estimatedDuration === p.minutes
+                      ? 'font-bold text-indigo-600 dark:text-indigo-400 scale-105'
+                      : 'hover:text-indigo-500'
+                  }`}
+                >
+                  {p.shortLabel}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
