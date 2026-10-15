@@ -1,6 +1,7 @@
 import ReminderPreference from '../models/ReminderPreference.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import Task from '../models/Task.js';
 import { evaluateUserReminder } from '../services/smartReminderService.js';
 import {
   sendAccountabilityEmail,
@@ -196,24 +197,39 @@ export const sendTestEmail = async (req, res, next) => {
         : (process.env.NODE_ENV === 'production' ? 'https://progresspilots.netlify.app' : 'http://localhost:5173');
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    const sampleTasks = [
-      { title: 'Complete DSA Trees and Graphs', priority: 'high', estimatedDuration: 90 },
-      { title: 'Fullstack Project Architecture', priority: 'medium', estimatedDuration: 60 },
-    ];
+    // Fetch user's real pending tasks from database
+    const userPendingTasks = await Task.find({
+      userId,
+      isArchived: false,
+      status: { $ne: 'done' },
+    })
+      .sort({ priority: 1, dueDate: 1, createdAt: -1 })
+      .limit(5);
+
+    const pendingTasks = userPendingTasks.length > 0
+      ? userPendingTasks.map((t) => ({
+          title: t.title,
+          priority: t.priority,
+          estimatedDuration: t.estimatedDuration || 30,
+        }))
+      : [
+          { title: 'Complete DSA Trees and Graphs', priority: 'high', estimatedDuration: 90 },
+          { title: 'Fullstack Project Architecture', priority: 'medium', estimatedDuration: 60 },
+        ];
 
     const html = buildReminderHtml({
       displayName: user.displayName || 'Progress Pilot',
       dateStr: todayStr,
-      message: 'This is a live test email from ProgressPilot Smart Accountability Reminders! Your email delivery is working perfectly.',
-      pendingTasks: sampleTasks,
+      message: 'This is a live reminder from ProgressPilot Smart Accountability! Here are your active pending tasks:',
+      pendingTasks,
       dashboardUrl: `${clientUrl}/tasks?date=${todayStr}`,
     });
 
     const text = buildReminderText({
       displayName: user.displayName || 'Progress Pilot',
       dateStr: todayStr,
-      message: 'This is a live test email from ProgressPilot Smart Accountability Reminders! Your email delivery is working perfectly.',
-      pendingTasks: sampleTasks,
+      message: 'This is a live reminder from ProgressPilot Smart Accountability! Here are your active pending tasks:',
+      pendingTasks,
       dashboardUrl: `${clientUrl}/tasks?date=${todayStr}`,
     });
 
