@@ -125,6 +125,7 @@ export const GoalsPage = () => {
   };
 
   const handleToggleMilestone = async (goal, milestoneId) => {
+    const prevGoals = goals;
     const updatedMilestones = goal.milestones.map((m) => {
       if (m.id === milestoneId) {
         const nextStatus = m.status === 'completed' ? 'pending' : 'completed';
@@ -137,21 +138,40 @@ export const GoalsPage = () => {
       return m;
     });
 
+    // 1. Instant Optimistic UI Update (0ms)
+    setGoals((prev) =>
+      prev.map((g) => (g._id === goal._id ? { ...g, milestones: updatedMilestones } : g))
+    );
+
+    // 2. Background sync
     try {
       await api.patch(`/goals/${goal._id}`, { milestones: updatedMilestones });
-      addToast({ title: 'Milestone updated', type: 'success' });
-      fetchGoals();
+      addToast({ title: 'Milestone updated', type: 'success', duration: 2000 });
+      fetchGoals(true);
     } catch (err) {
+      setGoals(prevGoals);
       addToast({ title: 'Update failed', message: err.message, type: 'error' });
     }
   };
 
   const handleIncrementProgress = async (goal, amount = 1) => {
+    const prevGoals = goals;
     const newProgress = Math.max(0, (goal.currentProgress || 0) + amount);
+    const newStatus = newProgress >= goal.targetValue ? 'completed' : 'in_progress';
+
+    // 1. Instant Optimistic UI Update (0ms)
+    setGoals((prev) =>
+      prev.map((g) =>
+        g._id === goal._id ? { ...g, currentProgress: newProgress, status: newStatus } : g
+      )
+    );
+
+    // 2. Background sync
     try {
       await api.patch(`/goals/${goal._id}`, { currentProgress: newProgress });
-      fetchGoals();
+      fetchGoals(true);
     } catch (err) {
+      setGoals(prevGoals);
       addToast({ title: 'Progress update failed', message: err.message, type: 'error' });
     }
   };
@@ -193,12 +213,20 @@ export const GoalsPage = () => {
 
   const handleDeleteGoal = async () => {
     if (!deleteGoalId) return;
+    const targetId = deleteGoalId;
+    const prevGoals = goals;
+
+    // 1. Instant Optimistic Removal (0ms)
+    setGoals((prev) => prev.filter((g) => g._id !== targetId));
+    setDeleteGoalId(null);
+    addToast({ title: 'Goal deleted', type: 'info', duration: 2500 });
+
+    // 2. Background sync
     try {
-      await api.delete(`/goals/${deleteGoalId}`);
-      addToast({ title: 'Goal deleted', type: 'info' });
-      setDeleteGoalId(null);
-      fetchGoals();
+      await api.delete(`/goals/${targetId}`);
+      fetchGoals(true);
     } catch (err) {
+      setGoals(prevGoals);
       addToast({ title: 'Delete failed', message: err.message, type: 'error' });
     }
   };

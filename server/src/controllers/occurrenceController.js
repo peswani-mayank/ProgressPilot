@@ -37,10 +37,15 @@ export const updateOccurrence = async (req, res, next) => {
       occurrence.completedAt = status === 'done' ? new Date() : null;
 
       // If occurrence task is a one-time task, keep base task status in sync
-      if (occurrence.taskId?.scheduleType === 'one_time') {
-        occurrence.taskId.status = status;
-        occurrence.taskId.completedAt = occurrence.completedAt;
-        await occurrence.taskId.save();
+      if (occurrence.taskId) {
+        const taskId = occurrence.taskId._id || occurrence.taskId;
+        const schedType = occurrence.taskId.scheduleType || 'one_time';
+        if (schedType === 'one_time') {
+          await Task.updateOne(
+            { _id: taskId, userId },
+            { status, completedAt: occurrence.completedAt }
+          );
+        }
       }
     }
 

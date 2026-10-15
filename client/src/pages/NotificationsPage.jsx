@@ -31,9 +31,9 @@ export const NotificationsPage = () => {
   // Reminder Preferences status (for pause/snooze banner)
   const [reminderPrefs, setReminderPrefs] = useState(null);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [data, prefs] = await Promise.all([
         api.get('/notifications'),
         api.get('/reminders/preferences').catch(() => null),
@@ -44,7 +44,7 @@ export const NotificationsPage = () => {
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -53,29 +53,49 @@ export const NotificationsPage = () => {
   }, []);
 
   const handleMarkAsRead = async (id) => {
+    const prevNotifications = notifications;
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
     try {
       await api.patch(`/notifications/${id}/read`);
-      fetchNotifications();
+      fetchNotifications(true);
     } catch (err) {
+      setNotifications(prevNotifications);
       console.error('Error marking as read:', err);
     }
   };
 
   const handleMarkAllRead = async () => {
+    const prevNotifications = notifications;
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+    addToast({ title: 'All notifications marked as read', type: 'success' });
+
     try {
       await api.post('/notifications/mark-all-read');
-      addToast({ title: 'All notifications marked as read', type: 'success' });
-      fetchNotifications();
+      fetchNotifications(true);
     } catch (err) {
+      setNotifications(prevNotifications);
       addToast({ title: 'Failed to mark all as read', type: 'error' });
     }
   };
 
   const handleDismiss = async (id) => {
+    const prevNotifications = notifications;
+    const target = notifications.find((n) => n._id === id);
+    setNotifications((prev) => prev.filter((n) => n._id !== id));
+    if (target && !target.isRead) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
     try {
       await api.delete(`/notifications/${id}`);
-      fetchNotifications();
+      fetchNotifications(true);
     } catch (err) {
+      setNotifications(prevNotifications);
       console.error('Error dismissing notification:', err);
     }
   };
