@@ -105,7 +105,7 @@ export const ReminderSettings = () => {
     e?.preventDefault();
     try {
       setSaving(true);
-      await api.put('/reminders/preferences', {
+      const payload = {
         enabled,
         notificationEmail: notificationEmail.trim() || null,
         startTime,
@@ -119,7 +119,15 @@ export const ReminderSettings = () => {
         quietHoursEnd,
         timezone,
         maxEmailsPerDay: Number(maxEmailsPerDay),
-      });
+      };
+
+      if (typeof api.put === 'function') {
+        await api.put('/reminders/preferences', payload);
+      } else if (typeof api.patch === 'function') {
+        await api.patch('/reminders/preferences', payload);
+      } else {
+        await api.post('/reminders/preferences', payload);
+      }
 
       addToast({
         title: 'Reminder Settings Saved! ⚡',

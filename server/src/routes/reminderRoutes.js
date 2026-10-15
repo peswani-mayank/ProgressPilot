@@ -15,6 +15,7 @@ const router = express.Router();
 router.get('/preferences', getPreferences);
 router.put('/preferences', updatePreferences);
 router.patch('/preferences', updatePreferences);
+router.post('/preferences', updatePreferences);
 router.post('/snooze', snoozeReminders);
 router.post('/pause', pauseReminders);
 router.post('/resume', resumeReminders);
