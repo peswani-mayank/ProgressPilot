@@ -60,13 +60,6 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
   const [dueDate, setDueDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
   const [estimatedDuration, setEstimatedDuration] = useState(30);
-
-  const currentPresetIndex = DURATION_PRESETS.findIndex((p) => p.minutes === estimatedDuration);
-  const sliderIndex = currentPresetIndex !== -1
-    ? currentPresetIndex
-    : DURATION_PRESETS.reduce((prev, curr, i) =>
-        Math.abs(curr.minutes - estimatedDuration) < Math.abs(DURATION_PRESETS[prev].minutes - estimatedDuration) ? i : prev
-      , 0);
   const [subtasks, setSubtasks] = useState([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [goalId, setGoalId] = useState('');
@@ -382,7 +375,7 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
           </div>
         </div>
 
-        {/* Estimated Duration */}
+        {/* Estimated Duration (Clean Manual Input + Quick Shortcuts) */}
         <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 space-y-3">
           <div className="flex justify-between items-center text-xs">
             <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -390,56 +383,96 @@ export const TaskModal = ({ isOpen, onClose, task = null, initialDate = null, on
               Planned Focus Time
             </span>
             <span className="font-extrabold text-indigo-600 dark:text-indigo-400 font-mono text-sm bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-200/50 dark:border-indigo-800/50">
-              {estimatedDuration} minutes ({(estimatedDuration / 60).toFixed(1)} hrs)
+              {Math.floor(estimatedDuration / 60) > 0 ? `${Math.floor(estimatedDuration / 60)}h ` : ''}
+              {estimatedDuration % 60}m ({estimatedDuration} mins total)
             </span>
           </div>
 
-          {/* Quick Clickable Presets */}
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {DURATION_PRESETS.map((p) => {
-              const active = estimatedDuration === p.minutes;
-              return (
-                <button
-                  key={p.minutes}
-                  type="button"
-                  onClick={() => setEstimatedDuration(p.minutes)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all ${
-                    active
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-400'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
+          {/* Manual Numeric Inputs for Hours and Minutes */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                Hours (ghante)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="24"
+                  value={Math.floor(estimatedDuration / 60) || ''}
+                  onChange={(e) => {
+                    const h = Math.max(0, parseInt(e.target.value, 10) || 0);
+                    const m = estimatedDuration % 60;
+                    setEstimatedDuration(h * 60 + m);
+                  }}
+                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-semibold pointer-events-none">
+                  hrs
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                Minutes
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="5"
+                  value={estimatedDuration % 60}
+                  onChange={(e) => {
+                    const rawM = parseInt(e.target.value, 10) || 0;
+                    const m = Math.max(0, Math.min(59, rawM));
+                    const h = Math.floor(estimatedDuration / 60);
+                    setEstimatedDuration(h * 60 + m);
+                  }}
+                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  placeholder="30"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-semibold pointer-events-none">
+                  mins
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Stepped Slider perfectly 1:1 aligned with the labels below */}
-          <div className="space-y-1 pt-1">
-            <input
-              type="range"
-              min="0"
-              max={DURATION_PRESETS.length - 1}
-              step="1"
-              value={sliderIndex}
-              onChange={(e) => setEstimatedDuration(DURATION_PRESETS[Number(e.target.value)].minutes)}
-              className="w-full accent-indigo-600 cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 font-medium px-0.5 select-none">
-              {DURATION_PRESETS.map((p) => (
-                <span
-                  key={p.minutes}
-                  onClick={() => setEstimatedDuration(p.minutes)}
-                  className={`cursor-pointer transition-colors ${
-                    estimatedDuration === p.minutes
-                      ? 'font-bold text-indigo-600 dark:text-indigo-400 scale-105'
-                      : 'hover:text-indigo-500'
-                  }`}
-                >
-                  {p.shortLabel}
-                </span>
-              ))}
+          {/* Quick 1-Click Shortcuts */}
+          <div>
+            <span className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">
+              Quick 1-Click Shortcuts:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: '15m', minutes: 15 },
+                { label: '25m (Pomo)', minutes: 25 },
+                { label: '30m', minutes: 30 },
+                { label: '45m', minutes: 45 },
+                { label: '1 Hour', minutes: 60 },
+                { label: '1.5 Hours', minutes: 90 },
+                { label: '2 Hours', minutes: 120 },
+                { label: '3 Hours', minutes: 180 },
+              ].map((p) => {
+                const active = estimatedDuration === p.minutes;
+                return (
+                  <button
+                    key={p.minutes}
+                    type="button"
+                    onClick={() => setEstimatedDuration(p.minutes)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all ${
+                      active
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
