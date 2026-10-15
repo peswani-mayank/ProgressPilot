@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut as fbSignOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js';
 import { setAuthToken } from '../services/api.js';
 
@@ -15,6 +21,27 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       // 1. Check if real Firebase is configured
       if (isFirebaseConfigured && auth) {
+        // Check for redirect sign-in result (if user was redirected from Google)
+        try {
+          const redirectResult = await getRedirectResult(auth);
+          if (redirectResult && redirectResult.user) {
+            const idToken = await redirectResult.user.getIdToken();
+            setToken(idToken);
+            setAuthToken(idToken);
+            localStorage.setItem('progresspilot_token', idToken);
+            localStorage.setItem('progresspilot_auth_type', 'firebase');
+
+            setUser({
+              uid: redirectResult.user.uid,
+              email: redirectResult.user.email,
+              displayName: redirectResult.user.displayName || 'Progress Pilot User',
+              photoURL: redirectResult.user.photoURL || '',
+            });
+          }
+        } catch (redirectErr) {
+          console.warn('Redirect sign-in check notice:', redirectErr);
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
           if (fbUser) {
             try {
@@ -81,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (preferRedirect = false) => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
       throw new Error('Firebase configuration missing. Please add Firebase keys to client/.env');
     }
@@ -89,23 +116,44 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       googleProvider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
 
-      setToken(idToken);
-      setAuthToken(idToken);
-      localStorage.setItem('progresspilot_token', idToken);
-      localStorage.setItem('progresspilot_auth_type', 'firebase');
+      // Direct redirect requested
+      if (preferRedirect) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
 
-      const userData = {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName || 'Progress Pilot User',
-        photoURL: result.user.photoURL || '',
-      };
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const idToken = await result.user.getIdToken();
 
-      setUser(userData);
-      return userData;
+        setToken(idToken);
+        setAuthToken(idToken);
+        localStorage.setItem('progresspilot_token', idToken);
+        localStorage.setItem('progresspilot_auth_type', 'firebase');
+
+        const userData = {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName || 'Progress Pilot User',
+          photoURL: result.user.photoURL || '',
+        };
+
+        setUser(userData);
+        return userData;
+      } catch (popupErr) {
+        // If the browser blocks popup windows, automatically fall back to signInWithRedirect
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.message?.includes('popup-blocked')) {
+          console.warn('Google sign-in popup blocked by browser. Attempting full page redirect...');
+          try {
+            await signInWithRedirect(auth, googleProvider);
+            return;
+          } catch (redirectErr) {
+            throw popupErr; // throw original popup error if redirect also fails
+          }
+        }
+        throw popupErr;
+      }
     } catch (err) {
       console.error('Firebase Google sign-in failed:', err);
       throw err;

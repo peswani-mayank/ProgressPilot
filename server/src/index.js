@@ -40,6 +40,7 @@ const allowedOrigins = [
   'https://progresspilots.vercel.app',
   'https://progresspilot.vercel.app',
   process.env.CLIENT_URL,
+  process.env.CLIENT_SERVICE_URL,
 ].filter(Boolean);
 
 app.use(
@@ -86,7 +87,7 @@ app.get('/', (req, res) => {
 app.use(errorHandler);
 
 let server = null;
-if (process.env.NODE_ENV !== 'test') {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   server = app.listen(PORT, () => {
     console.log(`=========================================`);
     console.log(`🚀 ProgressPilot Server running on port ${PORT}`);

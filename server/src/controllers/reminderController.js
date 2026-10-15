@@ -192,9 +192,10 @@ export const sendTestEmail = async (req, res, next) => {
     }
 
     const clientUrl =
-      (process.env.CLIENT_URL && process.env.CLIENT_URL !== 'http://localhost:5173')
+      process.env.CLIENT_SERVICE_URL ||
+      ((process.env.CLIENT_URL && process.env.CLIENT_URL !== 'http://localhost:5173')
         ? process.env.CLIENT_URL
-        : (process.env.NODE_ENV === 'production' ? 'https://progresspilots.netlify.app' : 'http://localhost:5173');
+        : (process.env.NODE_ENV === 'production' ? 'https://progresspilots.netlify.app' : 'http://localhost:5173'));
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     // Fetch user's real pending tasks from database

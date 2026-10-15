@@ -30,22 +30,24 @@ export const LoginPage = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (preferRedirect = false) => {
     setError('');
     setLoading(true);
     try {
-      await loginWithGoogle();
-      addToast({
-        title: 'Welcome to ProgressPilot! 🚀',
-        message: 'Successfully signed in with Google.',
-        type: 'success',
-      });
-      navigate('/');
+      const user = await loginWithGoogle(preferRedirect);
+      if (user) {
+        addToast({
+          title: 'Welcome to ProgressPilot! 🚀',
+          message: 'Successfully signed in with Google.',
+          type: 'success',
+        });
+        navigate('/');
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Google sign-in failed.');
       addToast({
-        title: 'Sign In Failed',
+        title: 'Sign In Notice',
         message: err.message || 'Could not authenticate with Google.',
         type: 'error',
       });
@@ -93,9 +95,38 @@ export const LoginPage = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 sm:px-10 rounded-3xl shadow-card border border-slate-200/80 dark:border-slate-800 space-y-6">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 space-y-2">
+              <div className="flex items-start gap-2 font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                <span>
+                  {error.includes('popup-blocked')
+                    ? 'Pop-up Window Blocked by Browser'
+                    : error}
+                </span>
+              </div>
+              {error.includes('popup-blocked') && (
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-2 pl-6">
+                  <p>
+                    Aapke browser ne sign-in popup ko block kar diya hai. Browser URL bar me <strong>🚫 Pop-up Blocked</strong> icon par click karke <em>"Always allow pop-ups"</em> karein, ya neeche direct <strong>Redirect Sign-In</strong> use karein:
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleGoogleLogin(true)}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-xs transition-colors"
+                    >
+                      Sign In with Redirect
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDevLogin}
+                      className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium text-xs hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Instant Demo Mode
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
