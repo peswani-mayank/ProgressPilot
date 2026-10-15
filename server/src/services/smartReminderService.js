@@ -290,7 +290,10 @@ export const evaluateUserReminder = async (userId, options = {}) => {
     eveningMinutesRemaining,
   });
 
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl =
+    (process.env.CLIENT_URL && process.env.CLIENT_URL !== 'http://localhost:5173')
+      ? process.env.CLIENT_URL
+      : (process.env.NODE_ENV === 'production' ? 'https://progresspilots.netlify.app' : 'http://localhost:5173');
   const dashboardUrl = `${clientUrl}/tasks?date=${activeDateStr}`;
 
   const channelsDispatched = [];
