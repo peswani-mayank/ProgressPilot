@@ -99,27 +99,48 @@ export const TasksPage = () => {
   });
 
   const handleToggleComplete = async (task) => {
+    const newStatus = task.status === 'done' ? 'todo' : 'done';
+
+    // 1. Instant Optimistic UI Update (0ms delay - hand to hand)
+    setTasks((prev) =>
+      prev.map((t) => (t._id === task._id ? { ...t, status: newStatus } : t))
+    );
+
+    addToast({
+      title: newStatus === 'done' ? 'Task completed! 🎉' : 'Task marked as to-do',
+      type: 'success',
+      duration: 2500,
+    });
+
+    // 2. Sync with cloud backend in the background
     try {
-      const newStatus = task.status === 'done' ? 'todo' : 'done';
       await api.patch(`/tasks/${task._id}/complete`, { status: newStatus });
-      addToast({
-        title: newStatus === 'done' ? 'Task completed! 🎉' : 'Task marked as to-do',
-        type: 'success',
-      });
-      fetchTasks();
       refreshGlobalStats();
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err) {
+      // Rollback on network failure
+      setTasks((prev) =>
+        prev.map((t) => (t._id === task._id ? { ...t, status: task.status } : t))
+      );
       addToast({ title: 'Update failed', message: err.message, type: 'error' });
     }
   };
 
   const handleDelete = async (task) => {
+    const previousTasks = [...tasks];
+
+    // 1. Instant Optimistic Removal (0ms delay - hand to hand)
+    setTasks((prev) => prev.filter((t) => t._id !== task._id));
+    addToast({ title: 'Task deleted', type: 'info', duration: 2500 });
+
+    // 2. Sync with cloud backend in the background
     try {
       await api.delete(`/tasks/${task._id}`);
-      addToast({ title: 'Task deleted', type: 'info' });
-      fetchTasks();
       refreshGlobalStats();
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err) {
+      // Rollback on network failure
+      setTasks(previousTasks);
       addToast({ title: 'Delete failed', message: err.message, type: 'error' });
     }
   };
@@ -128,7 +149,7 @@ export const TasksPage = () => {
     try {
       await api.post(`/tasks/${task._id}/duplicate`);
       addToast({ title: 'Task duplicated successfully', type: 'success' });
-      fetchTasks();
+      fetchTasks(true);
       refreshGlobalStats();
     } catch (err) {
       addToast({ title: 'Duplicate failed', message: err.message, type: 'error' });
@@ -153,27 +174,48 @@ export const TasksPage = () => {
   };
 
   const handleBulkComplete = async () => {
+    const previousTasks = [...tasks];
+    const targetIds = [...selectedIds];
+
+    // 1. Instant Optimistic UI Update (0ms)
+    setTasks((prev) =>
+      prev.map((t) => (targetIds.includes(t._id) ? { ...t, status: 'done' } : t))
+    );
+    setSelectedIds([]);
+    addToast({ title: `${targetIds.length} tasks marked completed!`, type: 'success' });
+
+    // 2. Background sync
     try {
       await Promise.all(
-        selectedIds.map((id) => api.patch(`/tasks/${id}/complete`, { status: 'done' }))
+        targetIds.map((id) => api.patch(`/tasks/${id}/complete`, { status: 'done' }))
       );
-      addToast({ title: `${selectedIds.length} tasks marked completed!`, type: 'success' });
-      setSelectedIds([]);
-      fetchTasks();
       refreshGlobalStats();
+      fetchTasks(true);
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err) {
+      setTasks(previousTasks);
       addToast({ title: 'Bulk complete failed', message: err.message, type: 'error' });
     }
   };
 
   const handleBulkDelete = async () => {
+    const previousTasks = [...tasks];
+    const targetIds = [...selectedIds];
+
+    // 1. Instant Optimistic Removal (0ms)
+    setTasks((prev) => prev.filter((t) => !targetIds.includes(t._id)));
+    setSelectedIds([]);
+    setShowBulkDeleteConfirm(false);
+    addToast({ title: `${targetIds.length} tasks deleted`, type: 'info' });
+
+    // 2. Background sync
     try {
-      await Promise.all(selectedIds.map((id) => api.delete(`/tasks/${id}`)));
-      addToast({ title: `${selectedIds.length} tasks deleted`, type: 'info' });
-      setSelectedIds([]);
-      fetchTasks();
+      await Promise.all(targetIds.map((id) => api.delete(`/tasks/${id}`)));
       refreshGlobalStats();
+      fetchTasks(true);
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err) {
+      setTasks(previousTasks);
       addToast({ title: 'Bulk delete failed', message: err.message, type: 'error' });
     }
   };

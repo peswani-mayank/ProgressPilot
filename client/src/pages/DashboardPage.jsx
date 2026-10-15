@@ -103,26 +103,114 @@ export const DashboardPage = () => {
   }, [selectedDate]);
 
   const handleToggleComplete = async (task, occurrence) => {
-    try {
-      const isCurrentlyDone = occurrence ? occurrence.status === 'done' : task.status === 'done';
-      const newStatus = isCurrentlyDone ? 'todo' : 'done';
+    const isCurrentlyDone = occurrence ? occurrence.status === 'done' : task.status === 'done';
+    const newStatus = isCurrentlyDone ? 'todo' : 'done';
 
+    // 1. Snapshot previous state for rollback on error
+    const prevOccurrences = occurrences;
+    const prevDailyStats = dailyStats;
+    const prevUpcomingDeadlines = upcomingDeadlines;
+
+    // 2. Instant Optimistic UI Update (0ms delay - hand to hand)
+    setOccurrences((prev) =>
+      prev.map((occ) => {
+        const matchesOcc = occurrence?._id && occ._id === occurrence._id;
+        const matchesTask =
+          (occ.taskId?._id || occ.taskId) === (task?._id || occurrence?.taskId?._id || occurrence?.taskId);
+        if (matchesOcc || matchesTask) {
+          return {
+            ...occ,
+            status: newStatus,
+            taskId:
+              typeof occ.taskId === 'object' && occ.taskId !== null
+                ? { ...occ.taskId, status: newStatus }
+                : occ.taskId,
+          };
+        }
+        return occ;
+      })
+    );
+
+    // If marked done, optimistically filter from upcoming deadlines
+    if (newStatus === 'done') {
+      setUpcomingDeadlines((prev) => prev.filter((t) => t._id !== task?._id));
+    }
+
+    // Instantly update stats counter
+    if (dailyStats) {
+      const delta = newStatus === 'done' ? 1 : -1;
+      const newCompleted = Math.max(0, (dailyStats.completedTasks || 0) + delta);
+      const total = dailyStats.totalTasks || occurrences.length || 1;
+      setDailyStats({
+        ...dailyStats,
+        completedTasks: newCompleted,
+        completionRate: Math.min(100, Math.round((newCompleted / Math.max(1, total)) * 100)),
+      });
+    }
+
+    addToast({
+      title: newStatus === 'done' ? 'Task completed! 🎉' : 'Task marked as to-do',
+      type: 'success',
+      duration: 2500,
+    });
+
+    // 3. Sync with cloud backend in the background
+    try {
       if (occurrence?._id) {
         await api.patch(`/occurrences/${occurrence._id}`, { status: newStatus });
       } else {
         await api.patch(`/tasks/${task._id}/complete`, { status: newStatus, date: selectedDate });
       }
-
-      addToast({
-        title: newStatus === 'done' ? 'Task completed! 🎉' : 'Task marked as to-do',
-        type: 'success',
-        duration: 2500,
-      });
-
-      loadDashboardData();
+      // Re-sync silently in background without showing skeleton loader
+      loadDashboardData(true);
       refreshGlobalStats();
+      window.dispatchEvent(new CustomEvent('task-updated'));
     } catch (err) {
+      // Rollback on failure
+      setOccurrences(prevOccurrences);
+      setDailyStats(prevDailyStats);
+      setUpcomingDeadlines(prevUpcomingDeadlines);
       addToast({ title: 'Update failed', message: err.message, type: 'error' });
+    }
+  };
+
+  const handleDeleteTask = async (taskToDelete) => {
+    const prevOccurrences = occurrences;
+    const prevDailyStats = dailyStats;
+    const prevUpcomingDeadlines = upcomingDeadlines;
+
+    // Instant Optimistic Removal (0ms delay)
+    setOccurrences((prev) =>
+      prev.filter((occ) => {
+        const occTaskId = occ.taskId?._id || occ.taskId;
+        return occTaskId !== taskToDelete._id && occ._id !== taskToDelete._id;
+      })
+    );
+    setUpcomingDeadlines((prev) => prev.filter((t) => t._id !== taskToDelete._id));
+
+    if (dailyStats) {
+      const isDone = taskToDelete.status === 'done';
+      setDailyStats({
+        ...dailyStats,
+        totalTasks: Math.max(0, (dailyStats.totalTasks || 1) - 1),
+        completedTasks: isDone
+          ? Math.max(0, (dailyStats.completedTasks || 0) - 1)
+          : (dailyStats.completedTasks || 0),
+      });
+    }
+
+    addToast({ title: 'Task deleted', type: 'info', duration: 2500 });
+
+    try {
+      await api.delete(`/tasks/${taskToDelete._id}`);
+      loadDashboardData(true);
+      refreshGlobalStats();
+      window.dispatchEvent(new CustomEvent('task-updated'));
+    } catch (err) {
+      setOccurrences(prevOccurrences);
+      setDailyStats(prevDailyStats);
+      setUpcomingDeadlines(prevUpcomingDeadlines);
+      addToast({ title: 'Delete failed', message: err.message, type: 'error' });
     }
   };
 
@@ -354,18 +442,19 @@ export const DashboardPage = () => {
                     onToggleComplete={handleToggleComplete}
                     onEdit={onEditTask}
                     onPostpone={onPostponeTask}
-                    onDelete={async (t) => {
-                      await api.delete(`/tasks/${t._id}`);
-                      loadDashboardData();
-                      refreshGlobalStats();
-                    }}
+                    onDelete={handleDeleteTask}
                     onDuplicate={async (t) => {
-                      await api.post(`/tasks/${t._id}/duplicate`);
-                      loadDashboardData();
-                      refreshGlobalStats();
+                      try {
+                        await api.post(`/tasks/${t._id}/duplicate`);
+                        addToast({ title: 'Task duplicated successfully', type: 'success' });
+                        loadDashboardData(true);
+                        refreshGlobalStats();
+                      } catch (err) {
+                        addToast({ title: 'Duplicate failed', message: err.message, type: 'error' });
+                      }
                     }}
                     onSessionLogged={() => {
-                      loadDashboardData();
+                      loadDashboardData(true);
                       refreshGlobalStats();
                     }}
                   />
